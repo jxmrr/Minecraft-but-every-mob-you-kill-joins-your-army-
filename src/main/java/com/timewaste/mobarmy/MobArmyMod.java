@@ -129,7 +129,7 @@ public final class MobArmyMod implements ModInitializer {
         // Global selection among LOADED mobs and online players in the SAME dimension.
         ServerTickEvents.END_SERVER_TICK.register(server->{
             for(ServerLevel world:server.getAllLevels()) {
-            if(world.getGameTime()%10!=0) return;
+            if(world.getGameTime()%10!=0) continue;
             ArrayList<Mob> army=new ArrayList<>();
             for(Entity e:world.getAllEntities())
                 if(e instanceof Mob mob && mob.isAlive() && ownerOf(mob)!=null) army.add(mob);
