@@ -47,6 +47,9 @@ public final class MobArmyMod implements ModInitializer {
 
         ServerLivingEntityEvents.AFTER_DEATH.register((victim,damage)->{
             if(!(victim instanceof Mob mob) || !(damage.getEntity() instanceof ServerPlayer player)) return;
+            // Only naturally occurring/unclaimed mobs award eggs.
+            // Existing army mobs never drop a replacement egg, regardless of who kills them.
+            if(ownerOf(mob)!=null) return;
             ItemStack egg=egg(mob.getType(),player.getUUID(),player.getName().getString(),colour(player));
             if(!player.getInventory().add(egg)) player.drop(egg,false);
             tell(player,"You earned a "+mob.getType().getDescription().getString()+" army egg!");
