@@ -5,8 +5,10 @@ Minecraft **26.2 Fabric** multiplayer mod for a three-player YouTube challenge.
 ## Rules
 - Killing a normal or modded `Mob` with a player-attributed attack awards **one army spawn egg**. Existing mutant entities are identified by their exact registry type.
 - Place your army egg to spawn a named, persistent mob: **purple**, **yellow**, or **red** player name plus `'s Skeleton` (or that mob's real type).
-- Your mobs attack enemy players **and mobs owned by other players**, not your own army or owner. Passive animals can fight using fallback damage.
-- Targeting has no *search radius* among already-loaded army mobs and online players in the same dimension. Distant targets can trigger teleport-assisted pursuit.
+- Your army is **PASSIVE by default**. Right-click an enemy player with an **empty main hand** to activate target mode for that player's entire team (the player **and every deployed mob they own**). Right-click that same player again to turn target mode off, or click a different player to switch enemy teams.
+- For distant targeting, aim at the other player and right-click with an empty main hand, up to **8 chunks (128 blocks)** away, with an unobstructed view.
+- Target mode affects ONLY the selected player's team. The third team and your own team are safe from intentional army attacks. Passive animals gain a fallback attack while targeting.
+- Army mobs never teleport towards enemies, and spawning eggs stay where the egg was placed. Armies pursue only eligible loaded targets within 8 chunks in the same dimension.
 - **Emerald sabotage:** sneak + right-click an enemy army mob with emerald. 50% successful conversion, one emerald per attempt, 30-second cooldown. Both the attacker and affected owner receive **private** messages reporting the attempted mob and result.
 - **PvP kill sabotage:** 100% chance to steal one random marked army egg if the defeated player has one; victim and killer receive **private** messages saying precisely which egg was stolen. The stolen egg belongs to the killer.
 
