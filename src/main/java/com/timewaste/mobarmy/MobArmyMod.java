@@ -12,7 +12,7 @@ import net.fabricmc.fabric.api.event.player.UseEntityCallback;
 import net.fabricmc.fabric.api.event.player.UseItemCallback;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.level.Level;
-import net.minecraft.world.phys.ClipContext;
+import net.minecraft.world.level.ClipContext;
 import net.minecraft.world.phys.HitResult;
 import net.minecraft.world.phys.Vec3;
 import net.minecraft.ChatFormatting;
@@ -44,6 +44,13 @@ public final class MobArmyMod implements ModInitializer {
     private static final double TARGET_RANGE_SQ=TARGET_RANGE*TARGET_RANGE;
     // Owner UUID -> selected enemy player UUID. All enemy mobs of that player share the target.
     private static final Map<UUID,UUID> selectedTargets=new HashMap<>();
+    // A defensive response overrides following only when NO manual target is selected.
+    // An attacked player's army retaliates for 20s after a successful hit.
+    private record DefenseOrder(UUID attackerEntity, UUID attackingTeam, long untilTick) {}
+    private static final Map<UUID,DefenseOrder> defenseOrders=new HashMap<>();
+    private static final int DEFENSE_TICKS=400;
+    private static final double FOLLOW_STOP_SQ=12.25; // within 3.5 blocks of the leader
+    private static final double FOLLOW_START_SQ=49.0; // follow when more than 7 blocks away
     private static final Map<UUID,Long> lastTargetClick=new HashMap<>();
     private static final Map<UUID,Long> lastAttack=new HashMap<>(),lastSteal=new HashMap<>();
     private static MinecraftServer serverInstance;
@@ -73,23 +80,50 @@ public final class MobArmyMod implements ModInitializer {
             return true;
         });
 
-        // No friendly fire, including mob-fired projectiles; wild mobs are protected.
+        // Owned mobs never harm their own leader, their own team or unrelated targets.
+        // Manual team targeting takes priority over automatic defensive retaliation.
         ServerLivingEntityEvents.ALLOW_DAMAGE.register((victim,damage,amount)->{
             UUID attacker=sourceOwner(damage.getEntity(),damage.getDirectEntity());
-            if(attacker==null) return true;
-            // A mob with no selected enemy team cannot damage anyone.
-            // Neither allied mobs nor the third player's team may be damaged.
-            UUID selected=selectedTargets.get(attacker);
-            if(selected==null) return false;
-            Entity direct=damage.getDirectEntity();
-            Entity attackEntity=damage.getEntity();
-            Entity source=attackEntity!=null?attackEntity:direct;
-            if(source!=null && source.distanceToSqr(victim)>TARGET_RANGE_SQ) return false;
-            if(victim instanceof ServerPlayer player)
-                return selected.equals(player.getUUID());
-            if(victim instanceof Mob mob)
-                return selected.equals(ownerOf(mob));
+            if(attacker==null) return true; // do not alter wild-mob/player vanilla damage
+            Entity cause=damage.getEntity()!=null?damage.getEntity():damage.getDirectEntity();
+            if(cause!=null && cause.distanceToSqr(victim)>TARGET_RANGE_SQ) return false;
+            UUID team=selectedTargets.get(attacker);
+            if(team==null) {
+                DefenseOrder order=defenseOrders.get(attacker);
+                if(order==null || order.untilTick()<victim.level().getGameTime()) return false;
+                team=order.attackingTeam();
+                if(team==null) return victim.getUUID().equals(order.attackerEntity());
+            }
+            if(victim instanceof ServerPlayer player) return team.equals(player.getUUID());
+            if(victim instanceof Mob mob) return team.equals(ownerOf(mob));
             return false;
+        });
+
+        // Called after a player ACTUALLY takes damage, rather than when an attacker
+        // merely attempts an attack (e.g. one blocked by armour/shield or a mod rule).
+        ServerLivingEntityEvents.AFTER_DAMAGE.register((victim,damage,baseTaken,taken,blocked)->{
+            if(!(victim instanceof ServerPlayer leader) || taken<=0.0f || blocked) return;
+            Entity source=damage.getEntity();
+            if(source==null) source=damage.getDirectEntity();
+            if(source instanceof Projectile projectile && projectile.getOwner()!=null)
+                source=projectile.getOwner();
+            if(!(source instanceof LivingEntity enemy)
+                || enemy.getUUID().equals(leader.getUUID())) return;
+            UUID attackingTeam=null;
+            if(enemy instanceof ServerPlayer player) attackingTeam=player.getUUID();
+            else if(enemy instanceof Mob mob) attackingTeam=ownerOf(mob);
+            if(leader.getUUID().equals(attackingTeam)) return; // don't retaliate on friends
+            long until=leader.level().getGameTime()+DEFENSE_TICKS;
+            DefenseOrder old=defenseOrders.put(leader.getUUID(),
+                new DefenseOrder(enemy.getUUID(),attackingTeam,until));
+            if(!selectedTargets.containsKey(leader.getUUID())
+                && (old==null || !Objects.equals(old.attackingTeam(),attackingTeam)
+                    || !old.attackerEntity().equals(enemy.getUUID()))) {
+                String target=attackingTeam==null
+                    ?enemy.getType().getDescription().getString()
+                    :enemy.getName().getString()+"'s team";
+                tell(leader,"DEFEND! Your army will protect you against "+target+".");
+            }
         });
 
         UseBlockCallback.EVENT.register((player,world,hand,hit)->{
@@ -174,9 +208,13 @@ public final class MobArmyMod implements ModInitializer {
             for(ServerLevel world:server.getAllLevels()) {
             if(world.getGameTime()%10!=0) continue;
             ArrayList<Mob> army=new ArrayList<>();
-            for(Entity e:world.getAllEntities())
+            Map<UUID,LivingEntity> loadedLiving=new HashMap<>();
+            for(Entity e:world.getAllEntities()) {
+                if(e instanceof LivingEntity living && living.isAlive())
+                    loadedLiving.put(living.getUUID(),living);
                 if(e instanceof Mob mob && mob.isAlive() && ownerOf(mob)!=null) army.add(mob);
-            for(Mob mob:army) pursue(world,mob,army);
+            }
+            for(Mob mob:army) pursue(world,mob,army,loadedLiving);
             }
         });
     }
@@ -312,52 +350,86 @@ public final class MobArmyMod implements ModInitializer {
         return best;
     }
 
-    private static void pursue(ServerLevel world,Mob mob,List<Mob> army) {
+    private static void pursue(ServerLevel world,Mob mob,List<Mob> army,
+                                Map<UUID,LivingEntity> loadedLiving) {
         UUID owner=ownerOf(mob);
-        if(owner==null||!mob.isAlive()) return;
+        if(owner==null || !mob.isAlive()) return;
         refreshName(mob,owner,ownerName(mob));
-        UUID targetTeam=selectedTargets.get(owner);
-        if(targetTeam==null) {
-            mob.setTarget(null);
-            mob.getNavigation().stop();
-            return;
+        ServerPlayer leader=world.getServer().getPlayerList().getPlayer(owner);
+        UUID manualTeam=selectedTargets.get(owner);
+        UUID defensiveTeam=null;
+        UUID defensiveAttacker=null;
+        if(manualTeam==null) {
+            DefenseOrder defense=defenseOrders.get(owner);
+            if(defense!=null && world.getGameTime()<=defense.untilTick()) {
+                defensiveTeam=defense.attackingTeam();
+                defensiveAttacker=defense.attackerEntity();
+            }
         }
 
-        // Choose the nearest eligible enemy in the SELECTED TEAM ONLY:
-        // the targeted player OR an army mob carrying the target player's owner UUID.
         LivingEntity nearest=null;
         double nearestDistance=TARGET_RANGE_SQ;
-        ServerPlayer enemyPlayer=world.getServer().getPlayerList().getPlayer(targetTeam);
-        if(enemyPlayer!=null && enemyPlayer.level()==world && enemyPlayer.isAlive()
-           && !enemyPlayer.isSpectator()) {
-            double d=mob.distanceToSqr(enemyPlayer);
-            if(d<=nearestDistance) { nearestDistance=d; nearest=enemyPlayer; }
+        UUID enemyTeam=manualTeam!=null?manualTeam:defensiveTeam;
+        if(enemyTeam!=null) {
+            // In either manual Target Mode or team-defence mode, attack the chosen
+            // player AND any deployed mob owned by that player, never the third team.
+            ServerPlayer enemyPlayer=world.getServer().getPlayerList().getPlayer(enemyTeam);
+            if(enemyPlayer!=null && enemyPlayer.level()==world && enemyPlayer.isAlive()
+               && !enemyPlayer.isSpectator()) {
+                double d=mob.distanceToSqr(enemyPlayer);
+                if(d<=nearestDistance) {nearestDistance=d;nearest=enemyPlayer;}
+            }
+            for(Mob enemy:army) {
+                if(enemy==mob || !enemy.isAlive() || !enemyTeam.equals(ownerOf(enemy)))
+                    continue;
+                double d=mob.distanceToSqr(enemy);
+                if(d<=nearestDistance) {nearestDistance=d;nearest=enemy;}
+            }
+        } else if(defensiveAttacker!=null) {
+            // Unowned/wild aggressors: retaliate against the SPECIFIC wild mob.
+            LivingEntity wild=loadedLiving.get(defensiveAttacker);
+            if(wild!=null && wild.isAlive() && !wild.getUUID().equals(owner)
+                && mob.distanceToSqr(wild)<=TARGET_RANGE_SQ) nearest=wild;
         }
-        for(Mob enemy:army) {
-            if(enemy==mob||!enemy.isAlive()||!targetTeam.equals(ownerOf(enemy))) continue;
-            double d=mob.distanceToSqr(enemy);
-            if(d<=nearestDistance) { nearestDistance=d; nearest=enemy; }
-        }
-        if(nearest==null) {
-            mob.setTarget(null);
-            mob.getNavigation().stop();
+
+        if(nearest!=null) {
+            engage(world,mob,nearest);
             return;
         }
 
-        // NEVER teleport the mob. It stays at its spawn location until it walks
-        // or uses its own vanilla/mutant movement logic, even when its owner is far away.
-        boolean mutant=mutants && EntityType.getKey(mob.getType()).getNamespace().equals("mutantmonsters");
-        mob.setTarget(nearest);
-        if(!mutant||mob.getNavigation().isDone())
-            mob.getNavigation().moveTo(nearest,mutant?1.0:1.3);
-        mob.getLookControl().setLookAt(nearest,30,30);
-        if(mutant) return; // mutant monsters keep their specialized attacks
+        // Passive behaviour: return to / follow the owner WITHOUT teleportation.
+        // Also applies after a defensive threat dies, leaves range or times out.
+        mob.setTarget(null);
+        if(leader==null || leader.level()!=world || !leader.isAlive()
+            || leader.isSpectator()) {
+            mob.getNavigation().stop();
+            return;
+        }
+        double leaderDistance=mob.distanceToSqr(leader);
+        if(leaderDistance>FOLLOW_START_SQ) {
+            // No arbitrary spawn-to-enemy teleportation. Let normal pathfinding walk.
+            if(mob.getNavigation().isDone() || world.getGameTime()%20==0)
+                mob.getNavigation().moveTo(leader,1.25);
+            mob.getLookControl().setLookAt(leader,30,30);
+        } else if(leaderDistance<=FOLLOW_STOP_SQ) {
+            mob.getNavigation().stop();
+        }
+    }
+
+    private static void engage(ServerLevel world,Mob mob,LivingEntity target) {
+        boolean mutant=mutants
+            && EntityType.getKey(mob.getType()).getNamespace().equals("mutantmonsters");
+        mob.setTarget(target);
+        if(!mutant || mob.getNavigation().isDone())
+            mob.getNavigation().moveTo(target,mutant?1.0:1.3);
+        mob.getLookControl().setLookAt(target,30,30);
+        if(mutant) return; // Mutant Monsters retains its native special AI.
         double reach=Math.max(2.3,mob.getBbWidth()*0.5+1.5);
-        if(mob.distanceToSqr(nearest)<=reach*reach && mob.hasLineOfSight(nearest)) {
+        if(mob.distanceToSqr(target)<=reach*reach && mob.hasLineOfSight(target)) {
             long tick=world.getGameTime();
             if(tick-lastAttack.getOrDefault(mob.getUUID(),-999L)>=20) {
                 lastAttack.put(mob.getUUID(),tick);
-                nearest.hurtServer(world,world.damageSources().mobAttack(mob),3f);
+                target.hurtServer(world,world.damageSources().mobAttack(mob),3f);
             }
         }
     }
@@ -392,7 +464,7 @@ public final class MobArmyMod implements ModInitializer {
     private static void init(MinecraftServer server) {
         if(server==serverInstance) return;
         serverInstance=server;
-        colors.clear();lastAttack.clear();lastSteal.clear();selectedTargets.clear();lastTargetClick.clear();
+        colors.clear();lastAttack.clear();lastSteal.clear();selectedTargets.clear();defenseOrders.clear();lastTargetClick.clear();
         Properties p=new Properties();
         if(!Files.isRegularFile(config(server))) return;
         try(InputStream stream=Files.newInputStream(config(server))) {
