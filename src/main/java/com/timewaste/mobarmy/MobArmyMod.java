@@ -83,7 +83,7 @@ public final class MobArmyMod implements ModInitializer {
                 EntityType<?> type=BuiltInRegistries.ENTITY_TYPE.getOptional(Identifier.parse(typeId)).orElse(null);
                 if(type==null) {tell(p,"Unknown mob type: "+typeId);return InteractionResult.FAIL;}
                 BlockPos at=hit.getBlockPos().relative(hit.getDirection());
-                Entity spawned=type.spawn(level,at,EntitySpawnReason.SPAWN_EGG);
+                Entity spawned=type.spawn(level,at,EntitySpawnReason.SPAWN_ITEM_USE);
                 if(!(spawned instanceof Mob mob)) return InteractionResult.FAIL;
                 own(mob,UUID.fromString(tag.getStringOr(EGG_OWNER,"")),
                     tag.getStringOr(EGG_NAME,"Unknown"));
@@ -127,12 +127,14 @@ public final class MobArmyMod implements ModInitializer {
         });
 
         // Global selection among LOADED mobs and online players in the SAME dimension.
-        ServerTickEvents.END_WORLD_TICK.register(world->{
+        ServerTickEvents.END_SERVER_TICK.register(server->{
+            for(ServerLevel world:server.getAllLevels()) {
             if(world.getGameTime()%10!=0) return;
             ArrayList<Mob> army=new ArrayList<>();
             for(Entity e:world.getAllEntities())
                 if(e instanceof Mob mob && mob.isAlive() && ownerOf(mob)!=null) army.add(mob);
             for(Mob mob:army) pursue(world,mob,army);
+            }
         });
     }
 
@@ -280,14 +282,14 @@ public final class MobArmyMod implements ModInitializer {
             .withStyle(ChatFormatting.GOLD));
     }
     private static int colour(ServerPlayer player) {
-        init(player.getServer());
+        init(player.level().getServer());
         Integer assigned=colors.get(player.getUUID());
         if(assigned!=null) return assigned;
         Set<Integer> occupied=new HashSet<>(colors.values());
         int result=0;
         for(int i=0;i<3;i++) if(!occupied.contains(i)) {result=i;break;}
         colors.put(player.getUUID(),result);
-        store(player.getServer());
+        store(player.level().getServer());
         tell(player,"Your army colour is "+new String[]{"PURPLE","YELLOW","RED"}[result]+".");
         return result;
     }
