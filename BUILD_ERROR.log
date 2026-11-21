@@ -4,30 +4,26 @@ Starting a Gradle Daemon (subsequent builds will be faster)
 Fabric Loom: 1.18.2
 
 > Task :compileJava
-/home/runner/work/Minecraft-but-every-mob-you-kill-joins-your-army-/Minecraft-but-every-mob-you-kill-joins-your-army-/src/main/java/com/timewaste/mobarmy/MobArmyMod.java:86: error: cannot find symbol
-                Entity spawned=type.spawn(level,at,EntitySpawnReason.SPAWN_EGG);
-                                                                    ^
-  symbol:   variable SPAWN_EGG
-  location: class EntitySpawnReason
-/home/runner/work/Minecraft-but-every-mob-you-kill-joins-your-army-/Minecraft-but-every-mob-you-kill-joins-your-army-/src/main/java/com/timewaste/mobarmy/MobArmyMod.java:130: error: cannot find symbol
-        ServerTickEvents.END_WORLD_TICK.register(world->{
-                        ^
-  symbol:   variable END_WORLD_TICK
-  location: class ServerTickEvents
-/home/runner/work/Minecraft-but-every-mob-you-kill-joins-your-army-/Minecraft-but-every-mob-you-kill-joins-your-army-/src/main/java/com/timewaste/mobarmy/MobArmyMod.java:283: error: cannot find symbol
-        init(player.getServer());
-                   ^
-  symbol:   method getServer()
-  location: variable player of type ServerPlayer
-/home/runner/work/Minecraft-but-every-mob-you-kill-joins-your-army-/Minecraft-but-every-mob-you-kill-joins-your-army-/src/main/java/com/timewaste/mobarmy/MobArmyMod.java:290: error: cannot find symbol
-        store(player.getServer());
-                    ^
-  symbol:   method getServer()
-  location: variable player of type ServerPlayer
+/home/runner/work/Minecraft-but-every-mob-you-kill-joins-your-army-/Minecraft-but-every-mob-you-kill-joins-your-army-/src/main/java/com/timewaste/mobarmy/MobArmyMod.java:15: error: cannot find symbol
+import net.minecraft.world.phys.ClipContext;
+                               ^
+  symbol:   class ClipContext
+  location: package net.minecraft.world.phys
+/home/runner/work/Minecraft-but-every-mob-you-kill-joins-your-army-/Minecraft-but-every-mob-you-kill-joins-your-army-/src/main/java/com/timewaste/mobarmy/MobArmyMod.java:307: error: cannot find symbol
+            if(level.clip(new ClipContext(origin,point,ClipContext.Block.COLLIDER,
+                              ^
+  symbol:   class ClipContext
+  location: class MobArmyMod
+/home/runner/work/Minecraft-but-every-mob-you-kill-joins-your-army-/Minecraft-but-every-mob-you-kill-joins-your-army-/src/main/java/com/timewaste/mobarmy/MobArmyMod.java:307: error: package ClipContext does not exist
+            if(level.clip(new ClipContext(origin,point,ClipContext.Block.COLLIDER,
+                                                                  ^
+/home/runner/work/Minecraft-but-every-mob-you-kill-joins-your-army-/Minecraft-but-every-mob-you-kill-joins-your-army-/src/main/java/com/timewaste/mobarmy/MobArmyMod.java:308: error: package ClipContext does not exist
+                ClipContext.Fluid.NONE,observer)).getType()==HitResult.Type.BLOCK) continue;
+                           ^
 4 errors
 
 > Task :compileJava FAILED
-gradle/actions: Writing build results to /home/runner/work/_temp/.gradle-actions/build-results/__run-1795272024234.json
+gradle/actions: Writing build results to /home/runner/work/_temp/.gradle-actions/build-results/__run-1795275695675.json
 
 [Incubating] Problems report is available at: file:///home/runner/work/Minecraft-but-every-mob-you-kill-joins-your-army-/Minecraft-but-every-mob-you-kill-joins-your-army-/build/reports/problems/problems-report.html
 
@@ -36,26 +32,22 @@ FAILURE: Build failed with an exception.
 * What went wrong:
 Execution failed for task ':compileJava' (registered by plugin class 'org.gradle.api.plugins.JavaBasePlugin').
 > Compilation failed; see the compiler output below.
-  /home/runner/work/Minecraft-but-every-mob-you-kill-joins-your-army-/Minecraft-but-every-mob-you-kill-joins-your-army-/src/main/java/com/timewaste/mobarmy/MobArmyMod.java:86: error: cannot find symbol
-                  Entity spawned=type.spawn(level,at,EntitySpawnReason.SPAWN_EGG);
-                                                                      ^
-    symbol:   variable SPAWN_EGG
-    location: class EntitySpawnReason
-  /home/runner/work/Minecraft-but-every-mob-you-kill-joins-your-army-/Minecraft-but-every-mob-you-kill-joins-your-army-/src/main/java/com/timewaste/mobarmy/MobArmyMod.java:130: error: cannot find symbol
-          ServerTickEvents.END_WORLD_TICK.register(world->{
-                          ^
-    symbol:   variable END_WORLD_TICK
-    location: class ServerTickEvents
-  /home/runner/work/Minecraft-but-every-mob-you-kill-joins-your-army-/Minecraft-but-every-mob-you-kill-joins-your-army-/src/main/java/com/timewaste/mobarmy/MobArmyMod.java:283: error: cannot find symbol
-          init(player.getServer());
-                     ^
-    symbol:   method getServer()
-    location: variable player of type ServerPlayer
-  /home/runner/work/Minecraft-but-every-mob-you-kill-joins-your-army-/Minecraft-but-every-mob-you-kill-joins-your-army-/src/main/java/com/timewaste/mobarmy/MobArmyMod.java:290: error: cannot find symbol
-          store(player.getServer());
-                      ^
-    symbol:   method getServer()
-    location: variable player of type ServerPlayer
+  /home/runner/work/Minecraft-but-every-mob-you-kill-joins-your-army-/Minecraft-but-every-mob-you-kill-joins-your-army-/src/main/java/com/timewaste/mobarmy/MobArmyMod.java:15: error: cannot find symbol
+  import net.minecraft.world.phys.ClipContext;
+                                 ^
+    symbol:   class ClipContext
+    location: package net.minecraft.world.phys
+  /home/runner/work/Minecraft-but-every-mob-you-kill-joins-your-army-/Minecraft-but-every-mob-you-kill-joins-your-army-/src/main/java/com/timewaste/mobarmy/MobArmyMod.java:307: error: cannot find symbol
+              if(level.clip(new ClipContext(origin,point,ClipContext.Block.COLLIDER,
+                                ^
+    symbol:   class ClipContext
+    location: class MobArmyMod
+  /home/runner/work/Minecraft-but-every-mob-you-kill-joins-your-army-/Minecraft-but-every-mob-you-kill-joins-your-army-/src/main/java/com/timewaste/mobarmy/MobArmyMod.java:307: error: package ClipContext does not exist
+              if(level.clip(new ClipContext(origin,point,ClipContext.Block.COLLIDER,
+                                                                    ^
+  /home/runner/work/Minecraft-but-every-mob-you-kill-joins-your-army-/Minecraft-but-every-mob-you-kill-joins-your-army-/src/main/java/com/timewaste/mobarmy/MobArmyMod.java:308: error: package ClipContext does not exist
+                  ClipContext.Fluid.NONE,observer)).getType()==HitResult.Type.BLOCK) continue;
+                             ^
   4 errors
 
 * Try:
@@ -98,26 +90,22 @@ org.gradle.api.tasks.TaskExecutionException: Execution failed for task ':compile
 	at org.gradle.internal.concurrent.ExecutorPolicy$CatchAndRecordFailures.onExecute(ExecutorPolicy.java:65)
 	at org.gradle.internal.concurrent.AbstractManagedExecutor$1.run(AbstractManagedExecutor.java:47)
 Caused by: org.gradle.api.internal.tasks.compile.CompilationFailedException: Compilation failed; see the compiler output below.
-/home/runner/work/Minecraft-but-every-mob-you-kill-joins-your-army-/Minecraft-but-every-mob-you-kill-joins-your-army-/src/main/java/com/timewaste/mobarmy/MobArmyMod.java:86: error: cannot find symbol
-                Entity spawned=type.spawn(level,at,EntitySpawnReason.SPAWN_EGG);
-                                                                    ^
-  symbol:   variable SPAWN_EGG
-  location: class EntitySpawnReason
-/home/runner/work/Minecraft-but-every-mob-you-kill-joins-your-army-/Minecraft-but-every-mob-you-kill-joins-your-army-/src/main/java/com/timewaste/mobarmy/MobArmyMod.java:130: error: cannot find symbol
-        ServerTickEvents.END_WORLD_TICK.register(world->{
-                        ^
-  symbol:   variable END_WORLD_TICK
-  location: class ServerTickEvents
-/home/runner/work/Minecraft-but-every-mob-you-kill-joins-your-army-/Minecraft-but-every-mob-you-kill-joins-your-army-/src/main/java/com/timewaste/mobarmy/MobArmyMod.java:283: error: cannot find symbol
-        init(player.getServer());
-                   ^
-  symbol:   method getServer()
-  location: variable player of type ServerPlayer
-/home/runner/work/Minecraft-but-every-mob-you-kill-joins-your-army-/Minecraft-but-every-mob-you-kill-joins-your-army-/src/main/java/com/timewaste/mobarmy/MobArmyMod.java:290: error: cannot find symbol
-        store(player.getServer());
-                    ^
-  symbol:   method getServer()
-  location: variable player of type ServerPlayer
+/home/runner/work/Minecraft-but-every-mob-you-kill-joins-your-army-/Minecraft-but-every-mob-you-kill-joins-your-army-/src/main/java/com/timewaste/mobarmy/MobArmyMod.java:15: error: cannot find symbol
+import net.minecraft.world.phys.ClipContext;
+                               ^
+  symbol:   class ClipContext
+  location: package net.minecraft.world.phys
+/home/runner/work/Minecraft-but-every-mob-you-kill-joins-your-army-/Minecraft-but-every-mob-you-kill-joins-your-army-/src/main/java/com/timewaste/mobarmy/MobArmyMod.java:307: error: cannot find symbol
+            if(level.clip(new ClipContext(origin,point,ClipContext.Block.COLLIDER,
+                              ^
+  symbol:   class ClipContext
+  location: class MobArmyMod
+/home/runner/work/Minecraft-but-every-mob-you-kill-joins-your-army-/Minecraft-but-every-mob-you-kill-joins-your-army-/src/main/java/com/timewaste/mobarmy/MobArmyMod.java:307: error: package ClipContext does not exist
+            if(level.clip(new ClipContext(origin,point,ClipContext.Block.COLLIDER,
+                                                                  ^
+/home/runner/work/Minecraft-but-every-mob-you-kill-joins-your-army-/Minecraft-but-every-mob-you-kill-joins-your-army-/src/main/java/com/timewaste/mobarmy/MobArmyMod.java:308: error: package ClipContext does not exist
+                ClipContext.Fluid.NONE,observer)).getType()==HitResult.Type.BLOCK) continue;
+                           ^
 4 errors
 	at org.gradle.api.internal.tasks.compile.JdkJavaCompiler.execute(JdkJavaCompiler.java:88)
 	at org.gradle.api.internal.tasks.compile.JdkJavaCompiler.execute(JdkJavaCompiler.java:49)
@@ -253,5 +241,5 @@ Caused by: org.gradle.api.internal.tasks.compile.CompilationFailedException: Com
 	... 30 more
 
 
-BUILD FAILED in 12s
+BUILD FAILED in 10s
 1 actionable task: 1 executed
