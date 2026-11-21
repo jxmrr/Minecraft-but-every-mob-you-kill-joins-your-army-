@@ -1,12 +1,15 @@
 name: Build Fabric 26.2 Mod
 on:
   push:
+    paths-ignore:
+      - BUILD_ERROR.log
   workflow_dispatch:
+
 jobs:
   build:
     runs-on: ubuntu-latest
     permissions:
-      contents: read
+      contents: write
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-java@v4
@@ -16,9 +19,25 @@ jobs:
       - uses: gradle/actions/setup-gradle@v4
         with:
           gradle-version: '9.7.1'
-      - name: Build JAR
-        run: gradle build --stacktrace
+      - name: Build JAR and capture diagnostics
+        run: |
+          set -o pipefail
+          gradle build --stacktrace 2>&1 | tee BUILD_ERROR.log
+      - name: Save failed build log in repository
+        if: failure()
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          if [ ! -f BUILD_ERROR.log ]; then echo 'Build failed before gradle started.' > BUILD_ERROR.log; fi
+          old_sha="$(gh api "repos/${GITHUB_REPOSITORY}/contents/BUILD_ERROR.log" --jq '.sha' 2>/dev/null || true)"
+          if [ -n "$old_sha" ]; then
+            jq -n --arg message "Save latest failed Gradle log [skip ci]" --arg content "$(base64 -w0 BUILD_ERROR.log)" --arg branch "${GITHUB_REF_NAME}" --arg sha "$old_sha" '{message:$message,content:$content,branch:$branch,sha:$sha}' > /tmp/build-payload.json
+          else
+            jq -n --arg message "Save latest failed Gradle log [skip ci]" --arg content "$(base64 -w0 BUILD_ERROR.log)" --arg branch "${GITHUB_REF_NAME}" '{message:$message,content:$content,branch:$branch}' > /tmp/build-payload.json
+          fi
+          gh api -X PUT "repos/${GITHUB_REPOSITORY}/contents/BUILD_ERROR.log" --input /tmp/build-payload.json
       - uses: actions/upload-artifact@v4
+        if: success()
         with:
           name: mob-army-26.2-jar
           path: build/libs/*.jar
